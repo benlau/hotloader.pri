@@ -21,13 +21,13 @@ Proposed API
     // Add HotLoader.resourceMapRoot() and `qrc:/` to the import path
     loader.init(&engine);
 
-    // Snapshot data in previous run
-    QByteArray snapshot = loader.snapshot();
+    // load state in previous run
+    QByteArray state = loader.state();
 
     // Initialize QQmlApplicationEngine (e.g addImageProvider, setContextProperty etc)
 
     engine.load(loader.mappedUrl(":/main.qml")); 
-    // If hotReloadEnabled is true, resolvedUrl() insert `:/hot-loader-dynamic-resource` into the url.
+    // If hotReloadEnabled is true, mappedUrl() insert `:/hot-loader-dynamic-resource` into the url.
     // It will become ":/hot-loader-dynamic-resource/main.qml"
     // If hotReloadEnabled is false, it will simply return the original value.
 
@@ -39,11 +39,10 @@ Proposed API
 
     // Convert current state to snapshot data
 
-    /* Insert your code here*/
-    snapshot = ....
+    state =  /* Insert your code here*/
 
-    // Save snapshot data
-    loader.setSnapshot(snapshot);
+    // Save state snapshot
+    loader.setState(state);
   });
   ```
   
