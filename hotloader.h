@@ -2,6 +2,7 @@
 #define HOTLOADER_H
 
 #include <QStringList>
+#include <QUrl>
 #include <functional>
 
 class HotLoader
@@ -17,15 +18,17 @@ public:
 
     int run(std::function<int (void)> func);
 
-    QString mapRoot() const;
-    void setMapRoot(const QString &mapRoot);
+    QUrl mappedUrl(const QString& source) const;
+
+    QString resourceMapRoot() const;
+    void setResourceMapRoot(const QString &resourceMapRoot);
 
 private:
     void compile();
 
     bool m_hotReloadEnabled;
-    QString m_mapRoot;
 
+    QString m_resourceMapRoot;
     QStringList m_resourceFiles;
     QStringList m_compiledResourceFiles;
 };

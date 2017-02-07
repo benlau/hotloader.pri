@@ -20,7 +20,7 @@ QList<T> blockingMapped(QList<I> input, F f) {
     return res;
 }
 
-HotLoader::HotLoader() : m_hotReloadEnabled(false), m_mapRoot(":/hot-loader-dynamic-resource")
+HotLoader::HotLoader() : m_hotReloadEnabled(false), m_resourceMapRoot("/hot-loader-dynamic-resource")
 {
 
 }
@@ -49,10 +49,32 @@ int HotLoader::run(std::function<int (void)> func)
     int ret = func();
 
     foreach (QString rccFile, m_compiledResourceFiles) {
-        QResource::unregisterResource(rccFile, m_mapRoot);
+        QResource::unregisterResource(rccFile, m_resourceMapRoot);
     }
 
     return ret;
+}
+
+QUrl HotLoader::mappedUrl(const QString &source) const
+{
+    QUrl input(source);
+    if (!input.isValid()) {
+        if (source.indexOf(":") == 0) {
+            input = QUrl();
+            input.setPath(source.mid(1,-1));
+            input.setScheme("qrc");
+        } else {
+            input = QUrl::fromLocalFile(source);
+        }
+    }
+
+    if (!m_hotReloadEnabled) {
+        return input;
+    }
+
+    QString path = input.path();
+    input.setPath(m_resourceMapRoot + path);
+    return input;
 }
 
 void HotLoader::compile()
@@ -83,17 +105,17 @@ void HotLoader::compile()
     m_compiledResourceFiles = blockingMapped<QString>(m_resourceFiles, func);
 
     foreach (QString rccFile, m_compiledResourceFiles) {
-        QResource::unregisterResource(rccFile, m_mapRoot);
-        QResource::registerResource(rccFile, m_mapRoot);
+        QResource::unregisterResource(rccFile, m_resourceMapRoot);
+        QResource::registerResource(rccFile, m_resourceMapRoot);
     }
 }
 
-QString HotLoader::mapRoot() const
+QString HotLoader::resourceMapRoot() const
 {
-    return m_mapRoot;
+    return m_resourceMapRoot;
 }
 
-void HotLoader::setMapRoot(const QString &mapRoot)
+void HotLoader::setResourceMapRoot(const QString &mapRoot)
 {
-    m_mapRoot = mapRoot;
+    m_resourceMapRoot = mapRoot;
 }

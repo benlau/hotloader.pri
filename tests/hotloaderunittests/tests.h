@@ -8,7 +8,10 @@ public:
     explicit Tests(QObject *parent = 0);
 
 private slots:
+
     void test_HotLoader_run();
+
+    void test_HotLoader_mappedUrl();
 
 };
 
