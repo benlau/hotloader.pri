@@ -20,6 +20,52 @@ QList<T> blockingMapped(QList<I> input, F f) {
     return res;
 }
 
+template <typename T>
+void waitForFinished(QList<QFuture<T> > futures) {
+    for (int i = 0 ; i < futures.size(); i++) {
+        futures[i].waitForFinished();
+    }
+}
+
+static QStringList parseRcc(const QString& rccFile) {
+    // It don't use XML parser to avoid unnecessary library dependence
+    QString content = QtShell::cat(rccFile);
+    QStringList lines = content.split("\n");
+    QStringList files;
+
+    QRegularExpression re("<file>(.*)</file>");
+
+    foreach (QString line, lines) {
+        QRegularExpressionMatch match = re.match(line);
+        if (match.hasMatch()) {
+            files << match.captured(1);
+        }
+    }
+
+    return files;
+}
+
+static QString compileRcc(const QString& file) {
+    //@TODO - handle Windows
+
+    QString rcc = QString(HOT_LOADER_HOST_BINS) + "/rcc";
+    QString output = QtShell::basename(file).replace(".qrc","") + ".rcc";
+    QProcess process;
+    QStringList arguments;
+
+    arguments << "--binary" << file << "-o" << QtShell::pwd() + "/" + output;
+    qDebug().noquote() << rcc << arguments.join(" ");
+    process.start(rcc, arguments);
+    process.setProcessChannelMode(QProcess::MergedChannels);
+    process.waitForFinished();
+
+    if (process.exitCode() != 0) {
+        qWarning() << process.errorString();
+    }
+
+    return output;
+}
+
 HotLoader::HotLoader() : m_hotReloadEnabled(false), m_resourceMapRoot("/hot-loader-dynamic-resource")
 {
 
@@ -79,30 +125,8 @@ QUrl HotLoader::mappedUrl(const QString &source) const
 
 void HotLoader::compile()
 {
-    //@TODO - handle Windows
-    //@TODO - Return promise
-
-    auto func = [&](const QString& file) -> QString {
-        QString rcc = QString(HOT_LOADER_HOST_BINS) + "/rcc";
-        QString output = QtShell::basename(file).replace(".qrc","") + ".rcc";
-        QProcess process;
-        QStringList arguments;
-
-        arguments << "--binary" << file << "-o" << output;
-        process.start(rcc, arguments);
-        process.setProcessChannelMode(QProcess::MergedChannels);
-        process.waitForFinished();
-
-        if (process.exitCode() != 0) {
-            qWarning() << process.errorString();
-        } else {
-            qDebug().noquote() << "Compiled" << file;
-        }
-
-        return output;
-    };
-
-    m_compiledResourceFiles = blockingMapped<QString>(m_resourceFiles, func);
+    //@TODO - Return future
+    m_compiledResourceFiles = QtConcurrent::blockingMapped(m_resourceFiles, compileRcc);
 
     foreach (QString rccFile, m_compiledResourceFiles) {
         QResource::unregisterResource(rccFile, m_resourceMapRoot);
