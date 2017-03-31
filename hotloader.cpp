@@ -1,7 +1,10 @@
 #include <QtConcurrent>
 #include <QtShell>
 #include <QResource>
+#include <asyncfuture.h>
 #include "hotloader.h"
+
+using namespace AsyncFuture;
 
 template <typename T, typename F, typename I>
 QList<T> blockingMapped(QList<I> input, F f) {
@@ -24,6 +27,15 @@ template <typename T>
 void waitForFinished(QList<QFuture<T> > futures) {
     for (int i = 0 ; i < futures.size(); i++) {
         futures[i].waitForFinished();
+    }
+}
+
+template <typename T>
+void waitForFinished(QFuture<T> future) {
+
+    QEventLoop loop;
+    while (!future.isFinished()) {
+        loop.processEvents(QEventLoop::AllEvents, 10);
     }
 }
 
@@ -66,9 +78,8 @@ static QString compileRcc(const QString& file) {
     return output;
 }
 
-HotLoader::HotLoader() : m_hotReloadEnabled(false), m_resourceMapRoot("/hot-loader-dynamic-resource")
+HotLoader::HotLoader(QObject* parent) : QObject(parent), m_hotReloadEnabled(false), m_resourceMapRoot("/hot-loader-dynamic-resource")
 {
-
 }
 
 bool HotLoader::hotReloadEnabled() const
@@ -88,9 +99,12 @@ void HotLoader::addResourceFile(const QString &file)
 
 int HotLoader::run(std::function<int (void)> func)
 {
+    QFuture<void> future;
     if (m_hotReloadEnabled) {
-        compile();
+        future = compile();
     }
+
+    waitForFinished(future);
 
     int ret = func();
 
@@ -123,15 +137,19 @@ QUrl HotLoader::mappedUrl(const QString &source) const
     return input;
 }
 
-void HotLoader::compile()
+QFuture<void> HotLoader::compile()
 {
-    //@TODO - Return future
-    m_compiledResourceFiles = QtConcurrent::blockingMapped(m_resourceFiles, compileRcc);
+    QFuture<QString> result = QtConcurrent::mapped(m_resourceFiles, compileRcc);
 
-    foreach (QString rccFile, m_compiledResourceFiles) {
-        QResource::unregisterResource(rccFile, m_resourceMapRoot);
-        QResource::registerResource(rccFile, m_resourceMapRoot);
-    }
+    return observe(result).context(this, [=]() {
+        m_compiledResourceFiles = result.results();
+
+        foreach (QString rccFile, m_compiledResourceFiles) {
+            QResource::unregisterResource(rccFile, m_resourceMapRoot);
+            QResource::registerResource(rccFile, m_resourceMapRoot);
+        }
+
+    }).future();
 }
 
 QString HotLoader::resourceMapRoot() const
@@ -142,4 +160,9 @@ QString HotLoader::resourceMapRoot() const
 void HotLoader::setResourceMapRoot(const QString &mapRoot)
 {
     m_resourceMapRoot = mapRoot;
+}
+
+int HotLoader::exec()
+{
+    return QCoreApplication::instance()->exec();
 }

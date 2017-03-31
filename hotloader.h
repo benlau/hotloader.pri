@@ -3,12 +3,13 @@
 
 #include <QStringList>
 #include <QUrl>
+#include <QFuture>
 #include <functional>
 
-class HotLoader
+class HotLoader : public QObject
 {
 public:
-    HotLoader();
+    HotLoader(QObject* parent = 0);
 
     bool hotReloadEnabled() const;
 
@@ -23,8 +24,10 @@ public:
     QString resourceMapRoot() const;
     void setResourceMapRoot(const QString &resourceMapRoot);
 
+    int exec();
+
 private:
-    void compile();
+    QFuture<void> compile();
 
     bool m_hotReloadEnabled;
 

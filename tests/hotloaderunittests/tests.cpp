@@ -23,7 +23,6 @@ void Tests::test_HotLoader_run()
     loader.setHotReloadEnabled(true);
     loader.addResourceFile(QString(SRCDIR) + "/sample/sample.qrc");
 
-
     int ret = loader.run([&]() {
         executed = true;
         exists = QFile::exists(":hot-loader-dynamic-resource/1.txt");
