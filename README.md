@@ -1,6 +1,8 @@
 Hot Reload QML files
 ====================
 
+Experimental Project. It is not usable yet, but welcome for suggestion on the proposed API.
+
 Proposed API
 
 ```
